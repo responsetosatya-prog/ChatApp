@@ -11,6 +11,7 @@ import { connectDatabase } from "./config/database.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import chatRoutes from "./routes/chat.js";
+import { initializeDatabase } from "./config/initDatabase.js";
 
 dotenv.config();
 
@@ -134,6 +135,8 @@ const PORT = process.env.PORT || 5000;
 async function startServer() {
 
     await connectDatabase();
+
+    await initializeDatabase();
 
     server.listen(PORT, () => {
 
