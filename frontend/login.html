@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Login | ChatSphere</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<header class="header">
+
+    <nav class="navbar container">
+
+        <div class="logo">
+            ChatSphere
+        </div>
+
+        <div class="nav-buttons">
+
+            <a href="index.html" class="btn btn-outline">
+                Home
+            </a>
+
+            <a href="signup.html" class="btn btn-primary">
+                Sign Up
+            </a>
+
+        </div>
+
+    </nav>
+
+</header>
+
+<main class="login-page">
+
+    <div class="container">
+
+        <div class="login-card">
+
+            <div class="login-header">
+
+                <h1>Welcome Back</h1>
+
+                <p>
+                    Login to continue chatting with your friends.
+                </p>
+
+            </div>
+
+            <form id="loginForm">
+
+                <div class="form-group">
+
+                    <label>Email Address</label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        placeholder="Enter your email"
+                        required
+                    >
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Password</label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Enter your password"
+                        required
+                    >
+
+                </div>
+
+                <div class="login-options">
+
+                    <label>
+
+                        <input type="checkbox">
+
+                        Remember Me
+
+                    </label>
+
+                    <a href="#">
+                        Forgot Password?
+                    </a>
+
+                </div>
+
+                <button
+                    class="btn btn-primary login-btn"
+                    type="submit">
+
+                    Login
+
+                </button>
+
+            </form>
+
+            <div class="divider">
+
+                <span>OR</span>
+
+            </div>
+
+            <p class="signup-link">
+
+                Don't have an account?
+
+                <a href="signup.html">
+
+                    Create Account
+
+                </a>
+
+            </p>
+
+            <div
+                id="loginMessage"
+                class="login-message">
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+<script>
+
+const form = document.getElementById("loginForm");
+
+form.addEventListener("submit",async(e)=>{
+
+    e.preventDefault();
+
+    const email =
+        document.getElementById("email").value;
+
+    const password =
+        document.getElementById("password").value;
+
+    const message =
+        document.getElementById("loginMessage");
+
+    message.innerHTML="Logging in...";
+
+    try{
+
+        /*
+        Backend URL will be added later.
+        Example:
+
+        POST /api/auth/login
+        */
+
+        setTimeout(()=>{
+
+            message.innerHTML =
+            "Backend not connected yet.";
+
+        },1000);
+
+    }
+
+    catch(err){
+
+        message.innerHTML =
+        "Something went wrong.";
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
+```
