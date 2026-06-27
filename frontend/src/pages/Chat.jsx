@@ -9,9 +9,6 @@ function Chat() {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState("");
 
-    const [isTyping, setIsTyping] = useState(false);
-    const [typingUser, setTypingUser] = useState(null);
-
     const messagesEndRef = useRef(null);
 
     const user = JSON.parse(localStorage.getItem("user"));
@@ -53,7 +50,7 @@ function Chat() {
 
     /*
     ==========================================
-    LOAD MESSAGES
+    LOAD MESSAGES (DEDUP SAFE)
     ==========================================
     */
     const loadMessages = async (userId) => {
@@ -64,7 +61,12 @@ function Chat() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            setMessages(res.data.messages);
+            // FIX: ensure unique messages
+            const unique = Array.from(
+                new Map(res.data.messages.map(m => [m.id, m])).values()
+            );
+
+            setMessages(unique);
             setSelectedUser(userId);
 
             socket.emit("join-conversation", userId);
@@ -77,12 +79,12 @@ function Chat() {
 
     /*
     ==========================================
-    SEND MESSAGE
+    SEND MESSAGE (NO DUPLICATE ISSUE FIX)
     ==========================================
     */
     const sendMessage = async () => {
 
-        if (!text.trim()) return;
+        if (!text.trim() || !selectedUser) return;
 
         try {
 
@@ -97,9 +99,19 @@ function Chat() {
                 }
             );
 
-            setMessages((prev) => [...prev, res.data.data]);
+            const newMessage = res.data.data;
 
-            socket.emit("send-message", res.data.data);
+            // FIX: prevent duplicates (check ID)
+            setMessages((prev) => {
+
+                const exists = prev.find(m => m.id === newMessage.id);
+                if (exists) return prev;
+
+                return [...prev, newMessage];
+
+            });
+
+            socket.emit("send-message", newMessage);
 
             setText("");
 
@@ -111,34 +123,7 @@ function Chat() {
 
     /*
     ==========================================
-    TYPING
-    ==========================================
-    */
-    const handleTyping = (e) => {
-
-        setText(e.target.value);
-
-        socket.emit("typing", {
-            conversationId: selectedUser,
-            userId: user.id
-        });
-
-        clearTimeout(window.typingTimeout);
-
-        window.typingTimeout = setTimeout(() => {
-
-            socket.emit("stop-typing", {
-                conversationId: selectedUser,
-                userId: user.id
-            });
-
-        }, 1000);
-
-    };
-
-    /*
-    ==========================================
-    SOCKET EVENTS
+    SOCKET EVENTS (DEDUP SAFE)
     ==========================================
     */
     useEffect(() => {
@@ -148,19 +133,16 @@ function Chat() {
         socket.emit("user-online", user.id);
 
         socket.on("receive-message", (message) => {
-            setMessages((prev) => [...prev, message]);
-        });
 
-        socket.on("user-typing", (data) => {
-            if (data.userId !== user.id) {
-                setTypingUser(data.userId);
-                setIsTyping(true);
-            }
-        });
+            setMessages((prev) => {
 
-        socket.on("user-stop-typing", () => {
-            setIsTyping(false);
-            setTypingUser(null);
+                const exists = prev.find(m => m.id === message.id);
+                if (exists) return prev;
+
+                return [...prev, message];
+
+            });
+
         });
 
         return () => {
@@ -209,7 +191,7 @@ function Chat() {
                 })}
             </div>
 
-            {/* CHAT AREA */}
+            {/* CHAT BOX */}
             <div style={styles.chatBox}>
 
                 {selectedUser ? (
@@ -235,22 +217,14 @@ function Chat() {
                                 </div>
                             ))}
 
-                            {/* AUTO SCROLL TARGET */}
                             <div ref={messagesEndRef} />
 
                         </div>
 
-                        {/* TYPING */}
-                        {isTyping && (
-                            <p style={{ color: "#94a3b8", fontSize: 12 }}>
-                                User {typingUser} is typing...
-                            </p>
-                        )}
-
                         <div style={styles.inputBox}>
                             <input
                                 value={text}
-                                onChange={handleTyping}
+                                onChange={(e) => setText(e.target.value)}
                                 placeholder="Type message..."
                                 style={styles.input}
                             />
