@@ -1,8 +1,9 @@
 import { Server } from "socket.io";
+import SOCKET_EVENTS from "./socket.events.js";
 
 /*
 ==========================================
-Online Users
+Online Users Store
 ==========================================
 */
 
@@ -30,7 +31,7 @@ export function initializeSocket(server) {
 
     });
 
-    io.on("connection", (socket) => {
+    io.on(SOCKET_EVENTS.CONNECTION, (socket) => {
 
         console.log(`🟢 User Connected: ${socket.id}`);
 
@@ -40,21 +41,24 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("user-online", (userId) => {
+        socket.on(SOCKET_EVENTS.USER_ONLINE, (userId) => {
 
             onlineUsers.set(userId, socket.id);
 
-            io.emit("online-users", [...onlineUsers.keys()]);
+            io.emit(
+                SOCKET_EVENTS.ONLINE_USERS,
+                [...onlineUsers.keys()]
+            );
 
         });
 
         /*
         ==========================================
-        Join Conversation
+        Join Conversation Room
         ==========================================
         */
 
-        socket.on("join-conversation", (conversationId) => {
+        socket.on(SOCKET_EVENTS.JOIN_CONVERSATION, (conversationId) => {
 
             socket.join(`conversation-${conversationId}`);
 
@@ -66,10 +70,13 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("send-message", (message) => {
+        socket.on(SOCKET_EVENTS.SEND_MESSAGE, (message) => {
 
             io.to(`conversation-${message.conversationId}`)
-                .emit("receive-message", message);
+                .emit(
+                    SOCKET_EVENTS.RECEIVE_MESSAGE,
+                    message
+                );
 
         });
 
@@ -79,10 +86,13 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("typing", (data) => {
+        socket.on(SOCKET_EVENTS.TYPING, (data) => {
 
             socket.to(`conversation-${data.conversationId}`)
-                .emit("user-typing", data);
+                .emit(
+                    SOCKET_EVENTS.USER_TYPING,
+                    data
+                );
 
         });
 
@@ -92,10 +102,13 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("stop-typing", (data) => {
+        socket.on(SOCKET_EVENTS.STOP_TYPING, (data) => {
 
             socket.to(`conversation-${data.conversationId}`)
-                .emit("user-stop-typing", data);
+                .emit(
+                    SOCKET_EVENTS.USER_STOP_TYPING,
+                    data
+                );
 
         });
 
@@ -105,10 +118,13 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("messages-seen", (data) => {
+        socket.on(SOCKET_EVENTS.MESSAGES_SEEN, (data) => {
 
             socket.to(`conversation-${data.conversationId}`)
-                .emit("messages-seen", data);
+                .emit(
+                    SOCKET_EVENTS.MESSAGES_SEEN,
+                    data
+                );
 
         });
 
@@ -118,21 +134,23 @@ export function initializeSocket(server) {
         ==========================================
         */
 
-        socket.on("disconnect", () => {
+        socket.on(SOCKET_EVENTS.DISCONNECT, () => {
 
             for (const [userId, socketId] of onlineUsers.entries()) {
 
                 if (socketId === socket.id) {
 
                     onlineUsers.delete(userId);
-
                     break;
 
                 }
 
             }
 
-            io.emit("online-users", [...onlineUsers.keys()]);
+            io.emit(
+                SOCKET_EVENTS.ONLINE_USERS,
+                [...onlineUsers.keys()]
+            );
 
             console.log(`🔴 User Disconnected: ${socket.id}`);
 
