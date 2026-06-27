@@ -170,25 +170,28 @@ function Chat() {
 
                 {conversations.map((c, i) => {
 
-                    const otherUser =
-                        c.user_one_id === user.id
-                            ? c.user_two_id
-                            : c.user_one_id;
+    const otherUser =
+        c.user_one.id === user.id
+            ? c.user_two
+            : c.user_one;
 
-                    return (
-                        <div
-                            key={i}
-                            style={styles.chatItem}
-                            onClick={() => loadMessages(otherUser)}
-                        >
-                            User {otherUser}
-                            <p style={{ fontSize: 12 }}>
-                                {c.last_message}
-                            </p>
-                        </div>
-                    );
+    return (
+        <div
+            key={i}
+            style={styles.chatItem}
+            onClick={() => loadMessages(otherUser.id)}
+        >
 
-                })}
+            <strong>{otherUser.username}</strong>
+
+            <p style={{ fontSize: 12, color: "#94a3b8" }}>
+                {c.last_message || "No messages yet"}
+            </p>
+
+        </div>
+    );
+
+})}
             </div>
 
             {/* CHAT BOX */}
