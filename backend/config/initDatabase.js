@@ -1,5 +1,6 @@
 import { createUsersTable } from "../models/User.js";
 import { createMessagesTable } from "../models/Message.js";
+import { createConversationsTable } from "../models/Conversation.js";
 
 /*
 ==========================================
@@ -20,6 +21,8 @@ export async function initializeDatabase() {
         await createUsersTable();
 
         await createMessagesTable();
+        
+        await createConversationsTable();
 
         console.log("");
 
