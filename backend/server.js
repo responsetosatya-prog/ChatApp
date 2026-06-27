@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import chatRoutes from "./routes/chat.js";
 import { initializeDatabase } from "./config/initDatabase.js";
+import conversationRoutes from "./routes/conversation.js";
 
 dotenv.config();
 
@@ -72,8 +73,12 @@ app.get("/", (req, res) => {
 ============================ */
 
 app.use("/api/auth", authRoutes);
+
 app.use("/api/admin", adminRoutes);
+
 app.use("/api/chat", chatRoutes);
+
+app.use("/api/conversations", conversationRoutes);
 
 /* ============================
    Socket Events
