@@ -16,6 +16,7 @@ import conversationRoutes from "./routes/conversation.js";
 import { initializeSocket } from "./socket/socket.js";
 import path from "path";
 import uploadRoutes from "./routes/upload.js";
+import profileRoutes from "./routes/profile.js";
 
 dotenv.config();
 
@@ -82,6 +83,8 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/conversations", conversationRoutes);
 
 app.use("/api/upload", uploadRoutes);
+
+app.use("/api/profile", profileRoutes);
 
 /* ============================
    Socket Events
