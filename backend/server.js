@@ -14,6 +14,7 @@ import chatRoutes from "./routes/chat.js";
 import { initializeDatabase } from "./config/initDatabase.js";
 import conversationRoutes from "./routes/conversation.js";
 import { initializeSocket } from "./socket/socket.js";
+import path from "path";
 
 dotenv.config();
 
@@ -40,6 +41,10 @@ app.use(cors({
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(
+    "/uploads",
+    express.static(path.resolve("uploads"))
+);
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
