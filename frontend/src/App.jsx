@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Chat from "./pages/Chat";
+
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
 
@@ -12,9 +14,33 @@ function App() {
 
             <Routes>
 
+                {/* DEFAULT ROUTE */}
+                <Route
+                    path="/"
+                    element={<Navigate to="/login" />}
+                />
+
+                {/* LOGIN */}
                 <Route path="/login" element={<Login />} />
+
+                {/* REGISTER */}
                 <Route path="/register" element={<Register />} />
-                <Route path="/" element={<Chat />} />
+
+                {/* CHAT (PROTECTED) */}
+                <Route
+                    path="/chat"
+                    element={
+                        <ProtectedRoute>
+                            <Chat />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* FALLBACK */}
+                <Route
+                    path="*"
+                    element={<Navigate to="/login" />}
+                />
 
             </Routes>
 
