@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
+import socket from "../socket/socket";
 
 function Chat() {
 
     const [conversations, setConversations] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [messages, setMessages] = useState([]);
-    const [text, setText] = useState("");
+    const [text, setText] = useState([]);
 
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("token");
@@ -32,9 +33,7 @@ function Chat() {
         }
 
         catch (err) {
-
             console.error(err);
-
         }
 
     };
@@ -58,19 +57,20 @@ function Chat() {
             setMessages(res.data.messages);
             setSelectedUser(userId);
 
+            // Join socket room
+            socket.emit("join-conversation", userId);
+
         }
 
         catch (err) {
-
             console.error(err);
-
         }
 
     };
 
     /*
     ==========================================
-    Send Message
+    Send Message (REAL-TIME)
     ==========================================
     */
 
@@ -93,18 +93,55 @@ function Chat() {
                 }
             );
 
-            setMessages([...messages, res.data.data]);
+            const newMessage = res.data.data;
+
+            // Update UI instantly
+            setMessages((prev) => [...prev, newMessage]);
+
+            // Emit via socket
+            socket.emit("send-message", newMessage);
+
             setText("");
 
         }
 
         catch (err) {
-
             console.error(err);
-
         }
 
     };
+
+    /*
+    ==========================================
+    SOCKET LISTENERS
+    ==========================================
+    */
+
+    useEffect(() => {
+
+        // Connect socket
+        socket.connect();
+
+        socket.emit("user-online", user.id);
+
+        // Receive message
+        socket.on("receive-message", (message) => {
+
+            setMessages((prev) => [...prev, message]);
+
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+
+    }, []);
+
+    /*
+    ==========================================
+    LOAD CONVERSATIONS ON START
+    ==========================================
+    */
 
     useEffect(() => {
         loadConversations();
@@ -217,6 +254,12 @@ function Chat() {
     );
 
 }
+
+/*
+==========================================
+STYLES
+==========================================
+*/
 
 const styles = {
 
