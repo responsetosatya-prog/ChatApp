@@ -1,11 +1,5 @@
 import { io } from "socket.io-client";
 
-/*
-==========================================
-Socket Connection
-==========================================
-*/
-
 const SOCKET_URL =
     import.meta.env.VITE_BACKEND_URL ||
     "http://localhost:5000";
