@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import API from "../services/api";
 import socket from "../socket/socket";
+import ChatHeader from "../components/ChatHeader";
 
 function Chat() {
 
@@ -198,8 +199,14 @@ function Chat() {
             <div style={styles.chatBox}>
 
                 {selectedUser ? (
-                    <>
-                        <div style={styles.messages}>
+    <>
+        <ChatHeader
+            user={user}
+            selectedUser={selectedUser}
+            onlineUsers={[]}
+        />
+
+        <div style={styles.messages}>
 
                             {messages.map((m) => (
                                 <div
