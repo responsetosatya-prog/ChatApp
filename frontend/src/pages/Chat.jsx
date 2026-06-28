@@ -12,7 +12,12 @@ function Chat() {
 
     const messagesEndRef = useRef(null);
 
-    const user = JSON.parse(localStorage.getItem("user"));
+    const userString = localStorage.getItem("user");
+const user = userString ? JSON.parse(userString) : null;
+
+if (!user) {
+    return <h2 style={{ color: "white" }}>User not found. Please log in again.</h2>;
+}
     const token = localStorage.getItem("token");
 
     /*
