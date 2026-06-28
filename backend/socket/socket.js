@@ -1,5 +1,5 @@
-// backend/socket/socket.js
 import { Server } from "socket.io";
+import pool from "../config/database.js";
 import SOCKET_EVENTS from "./socket.events.js";
 
 const onlineUsers = new Map();
@@ -10,24 +10,20 @@ export function initializeSocket(server) {
             origin: process.env.FRONTEND_URL || "http://localhost:3000",
             methods: ["GET", "POST"],
             credentials: true,
-            allowedHeaders: ["Authorization"]
         },
         transports: ["websocket", "polling"],
         pingTimeout: 60000,
-        pingInterval: 25000
+        pingInterval: 25000,
     });
 
     io.on(SOCKET_EVENTS.CONNECTION, (socket) => {
         console.log(`🟢 User Connected: ${socket.id}`);
-
-        // Store user ID with socket
         let currentUserId = null;
 
-        socket.on(SOCKET_EVENTS.USER_ONLINE, (userId) => {
+        socket.on(SOCKET_EVENTS.USER_ONLINE, async (userId) => {
             currentUserId = userId;
             onlineUsers.set(userId, socket.id);
-            
-            // Broadcast online users to everyone
+            await pool.query("UPDATE users SET is_online = TRUE, last_seen = NOW() WHERE id = $1", [userId]);
             io.emit(SOCKET_EVENTS.ONLINE_USERS, [...onlineUsers.keys()]);
             console.log(`👤 User ${userId} is online (${onlineUsers.size} users online)`);
         });
@@ -38,16 +34,11 @@ export function initializeSocket(server) {
             console.log(`📨 User joined room: ${room}`);
         });
 
-        socket.on(SOCKET_EVENTS.SEND_MESSAGE, (message) => {
+        socket.on(SOCKET_EVENTS.SEND_MESSAGE, async (message) => {
             console.log(`📤 Message sent:`, message);
-            
-            // Emit to the specific conversation room
             const room = `conversation-${message.conversation_id || message.receiver_id}`;
-            
-            // Send to everyone in the room including sender
             io.to(room).emit(SOCKET_EVENTS.RECEIVE_MESSAGE, message);
-            
-            // Also send to receiver's individual socket if online
+
             const receiverSocketId = onlineUsers.get(message.receiver_id);
             if (receiverSocketId && receiverSocketId !== socket.id) {
                 io.to(receiverSocketId).emit(SOCKET_EVENTS.RECEIVE_MESSAGE, message);
@@ -58,7 +49,7 @@ export function initializeSocket(server) {
             const room = `conversation-${data.conversationId}`;
             socket.to(room).emit(SOCKET_EVENTS.USER_TYPING, {
                 userId: currentUserId,
-                conversationId: data.conversationId
+                conversationId: data.conversationId,
             });
         });
 
@@ -66,18 +57,14 @@ export function initializeSocket(server) {
             const room = `conversation-${data.conversationId}`;
             socket.to(room).emit(SOCKET_EVENTS.USER_STOP_TYPING, {
                 userId: currentUserId,
-                conversationId: data.conversationId
+                conversationId: data.conversationId,
             });
         });
 
-        socket.on(SOCKET_EVENTS.MESSAGES_SEEN, (data) => {
-            const room = `conversation-${data.conversationId}`;
-            socket.to(room).emit(SOCKET_EVENTS.MESSAGES_SEEN, data);
-        });
-
-        socket.on(SOCKET_EVENTS.DISCONNECT, () => {
+        socket.on(SOCKET_EVENTS.DISCONNECT, async () => {
             if (currentUserId) {
                 onlineUsers.delete(currentUserId);
+                await pool.query("UPDATE users SET is_online = FALSE, last_seen = NOW() WHERE id = $1", [currentUserId]);
                 io.emit(SOCKET_EVENTS.ONLINE_USERS, [...onlineUsers.keys()]);
                 console.log(`👤 User ${currentUserId} went offline (${onlineUsers.size} users online)`);
             }
