@@ -1,4 +1,3 @@
-# render.yaml - Place this in the root of your repository
 services:
   - type: web
     name: chatsphere-frontend
