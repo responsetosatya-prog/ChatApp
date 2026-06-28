@@ -1,5 +1,5 @@
 // frontend/src/pages/Chat.jsx
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { 
   FaSearch, FaUserPlus, FaPaperPlane, 
   FaImage, FaSmile, FaTimes, FaUser 
@@ -20,10 +20,11 @@ function Chat() {
   const [showSearch, setShowSearch] = useState(false);
   const [typing, setTyping] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
   
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const socketConnected = useRef(false);
   
   const userString = localStorage.getItem("user");
   const user = userString ? JSON.parse(userString) : null;
@@ -45,17 +46,17 @@ function Chat() {
   }, [messages]);
 
   // Load conversations
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const res = await API.get("/conversations");
       setConversations(res.data.conversations || []);
     } catch (err) {
       console.error("Error loading conversations:", err);
     }
-  };
+  }, []);
 
   // Load messages
-  const loadMessages = async (otherUser) => {
+  const loadMessages = useCallback(async (otherUser) => {
     try {
       setLoading(true);
       console.log("Loading messages for user:", otherUser);
@@ -69,18 +70,21 @@ function Chat() {
       
       setMessages(unique);
       setSelectedUser(otherUser);
-      setSelectedConversation(otherUser.id);
       
-      socket.emit("join-conversation", otherUser.id);
+      // Join conversation room
+      const roomId = otherUser.id;
+      socket.emit("join-conversation", roomId);
+      console.log(`Joined conversation room: conversation-${roomId}`);
+      
     } catch (err) {
       console.error("Error loading messages:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Search users
-  const searchUsers = async (query) => {
+  const searchUsers = useCallback(async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -92,10 +96,10 @@ function Chat() {
     } catch (err) {
       console.error("Error searching users:", err);
     }
-  };
+  }, []);
 
   // Start conversation
-  const startConversation = async (otherUser) => {
+  const startConversation = useCallback(async (otherUser) => {
     try {
       console.log("Starting conversation with:", otherUser);
       
@@ -111,13 +115,13 @@ function Chat() {
       }
     } catch (err) {
       console.error("Error starting conversation:", err);
-      // If error, try to load messages anyway
+      // Try to load messages anyway
       await loadMessages(otherUser);
     }
-  };
+  }, [loadConversations, loadMessages]);
 
   // Send message
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!text.trim() || !selectedUser) {
       console.log("Cannot send: no text or no selected user");
       return;
@@ -141,30 +145,42 @@ function Chat() {
         return [...prev, newMessage];
       });
 
-      socket.emit("send-message", {
+      // Emit to socket with conversation_id
+      const socketMessage = {
         ...newMessage,
-        conversationId: selectedConversation || selectedUser.id
-      });
+        conversation_id: selectedUser.id // Use user ID as room
+      };
+      
+      if (socketConnected.current) {
+        socket.emit("send-message", socketMessage);
+        console.log("Message emitted to socket:", socketMessage);
+      } else {
+        console.warn("Socket not connected, message saved locally only");
+      }
       
       setText("");
       setTyping(false);
       
       // Update conversation list
       await loadConversations();
+      
+      // Scroll to bottom
+      setTimeout(scrollToBottom, 100);
+      
     } catch (err) {
       console.error("Error sending message:", err);
       alert("Failed to send message. Please try again.");
     }
-  };
+  }, [text, selectedUser, loadConversations]);
 
   // Handle typing
-  const handleTyping = (e) => {
+  const handleTyping = useCallback((e) => {
     setText(e.target.value);
     
-    if (!typing && e.target.value.trim()) {
+    if (!typing && e.target.value.trim() && selectedUser) {
       setTyping(true);
       socket.emit("typing", {
-        conversationId: selectedConversation || selectedUser?.id,
+        conversationId: selectedUser.id,
         userId: user.id
       });
     }
@@ -173,11 +189,11 @@ function Chat() {
     typingTimeoutRef.current = setTimeout(() => {
       setTyping(false);
       socket.emit("stop-typing", {
-        conversationId: selectedConversation || selectedUser?.id,
+        conversationId: selectedUser?.id,
         userId: user.id
       });
     }, 2000);
-  };
+  }, [typing, selectedUser, user.id]);
 
   // Handle key press
   const handleKeyPress = (e) => {
@@ -187,49 +203,97 @@ function Chat() {
     }
   };
 
-  // Socket events
+  // Socket events setup
   useEffect(() => {
+    // Connect socket
     socket.connect();
+    socketConnected.current = true;
+
+    // Set user online
     socket.emit("user-online", user.id);
 
-    socket.on("receive-message", (message) => {
-      console.log("Received message:", message);
+    // Socket event listeners
+    const onConnect = () => {
+      console.log("✅ Socket connected:", socket.id);
+      setIsConnected(true);
+      socketConnected.current = true;
+      socket.emit("user-online", user.id);
+    };
+
+    const onReceiveMessage = (message) => {
+      console.log("📥 Received message via socket:", message);
       setMessages((prev) => {
         const exists = prev.find(m => m.id === message.id);
         if (exists) return prev;
         return [...prev, message];
       });
+      // Update conversations
       loadConversations();
-    });
+      // Scroll to bottom
+      setTimeout(scrollToBottom, 100);
+    };
 
-    socket.on("online-users", (users) => {
+    const onOnlineUsers = (users) => {
+      console.log("👥 Online users updated:", users);
       setOnlineUsers(users);
-    });
+    };
 
-    socket.on("user-typing", (data) => {
+    const onUserTyping = (data) => {
       if (data.userId !== user.id) {
         setIsTyping(true);
       }
-    });
+    };
 
-    socket.on("user-stop-typing", (data) => {
+    const onUserStopTyping = (data) => {
       if (data.userId !== user.id) {
         setIsTyping(false);
       }
+    };
+
+    const onDisconnect = () => {
+      console.log("🔌 Socket disconnected");
+      setIsConnected(false);
+      socketConnected.current = false;
+    };
+
+    const onReconnect = () => {
+      console.log("🔄 Socket reconnected");
+      setIsConnected(true);
+      socketConnected.current = true;
+      socket.emit("user-online", user.id);
+    };
+
+    // Register listeners
+    socket.on("connect", onConnect);
+    socket.on("receive-message", onReceiveMessage);
+    socket.on("online-users", onOnlineUsers);
+    socket.on("user-typing", onUserTyping);
+    socket.on("user-stop-typing", onUserStopTyping);
+    socket.on("disconnect", onDisconnect);
+    socket.on("reconnect", onReconnect);
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
     });
 
+    // Cleanup
     return () => {
-      socket.off("receive-message");
-      socket.off("online-users");
-      socket.off("user-typing");
-      socket.off("user-stop-typing");
+      socket.off("connect", onConnect);
+      socket.off("receive-message", onReceiveMessage);
+      socket.off("online-users", onOnlineUsers);
+      socket.off("user-typing", onUserTyping);
+      socket.off("user-stop-typing", onUserStopTyping);
+      socket.off("disconnect", onDisconnect);
+      socket.off("reconnect", onReconnect);
+      socket.off("connect_error");
       socket.disconnect();
+      socketConnected.current = false;
     };
-  }, []);
+  }, [user.id, loadConversations]);
 
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [loadConversations]);
 
   // Debounced search
   useEffect(() => {
@@ -238,20 +302,22 @@ function Chat() {
     }, 300);
     
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, searchUsers]);
 
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     socket.disconnect();
+    socketConnected.current = false;
     window.location.href = "/login";
   };
 
-  // Log for debugging
   console.log("Current state:", {
-    selectedUser,
-    hasMessages: messages.length > 0,
-    conversations: conversations.length
+    selectedUser: selectedUser?.username,
+    messages: messages.length,
+    conversations: conversations.length,
+    isConnected,
+    socketConnected: socketConnected.current
   });
 
   return (
@@ -266,7 +332,7 @@ function Chat() {
             <div className="sidebar-user-info">
               <h3>{user.full_name}</h3>
               <span className="user-status">
-                {onlineUsers.includes(user.id) ? '🟢 Online' : '⚫ Offline'}
+                {isConnected ? '🟢 Online' : '⚫ Offline'}
               </span>
             </div>
           </div>
@@ -434,7 +500,7 @@ function Chat() {
               )}
             </div>
 
-            {/* THIS IS THE INPUT BOX - Make sure it's always visible when user is selected */}
+            {/* Chat Input */}
             <div className="chat-input-container">
               <button className="input-action">
                 <FaImage />
