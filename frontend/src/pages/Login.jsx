@@ -32,8 +32,7 @@ function Login() {
             localStorage.setItem("user", JSON.stringify(res.data.user));
 
             // Redirect to chat
-            navigate("/");
-
+            navigate("/chat");
         }
 
         catch (err) {
