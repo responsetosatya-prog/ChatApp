@@ -28,10 +28,15 @@ function Register() {
     try {
       const res = await API.post("/auth/register", form);
       
-      if (res.data.success) {
-        setSuccess(res.data.message);
-        setTimeout(() => navigate("/login"), 3000);
-      }
+      // frontend/src/pages/Register.jsx
+// Find this part in the handleSubmit function:
+
+if (res.data.success) {
+    setSuccess("✅ Registration successful! You can now login.");
+    setTimeout(() => navigate("/login"), 2000);
+}
+
+// Remove any references to "waiting for admin approval"
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed.");
     } finally {
