@@ -1,41 +1,54 @@
 import express from "express";
-
-import {
-    getConversations,
-    startConversation
-} from "../controllers/conversationController.js";
-
-import {
-    authenticateToken
-} from "../middleware/auth.js";
+import pool from "../config/database.js";
+import verifyToken from "../middleware/auth.js";
 
 const router = express.Router();
 
 /*
-==========================================
-Conversation Routes
-Base URL: /api/conversations
-==========================================
+====================================
+GET ALL USERS
+====================================
 */
 
-/**
- * Get all conversations
- * GET /api/conversations
- */
 router.get(
-    "/",
-    authenticateToken,
-    getConversations
-);
+    "/users",
+    verifyToken,
+    async (req, res) => {
 
-/**
- * Start a new conversation
- * POST /api/conversations
- */
-router.post(
-    "/",
-    authenticateToken,
-    startConversation
+        try {
+
+            const result = await pool.query(
+                `
+                SELECT
+                    id,
+                    username,
+                    full_name,
+                    email
+                FROM users
+                WHERE id != $1
+                AND status='approved'
+                ORDER BY username ASC
+                `,
+                [req.user.id]
+            );
+
+            res.json({
+                success: true,
+                users: result.rows
+            });
+
+        } catch (err) {
+
+            console.error(err);
+
+            res.status(500).json({
+                success: false,
+                message: err.message
+            });
+
+        }
+
+    }
 );
 
 export default router;
