@@ -3,11 +3,10 @@ import pool from "../config/database.js";
 
 const router = express.Router();
 
-router.get("/user/:email", async (req, res) => {
+router.get("/users", async (req, res) => {
     try {
         const result = await pool.query(
-            "SELECT email, status FROM users WHERE email = $1",
-            [req.params.email]
+            "SELECT id, full_name, email, status FROM users ORDER BY id DESC"
         );
 
         res.json(result.rows);
