@@ -3,23 +3,17 @@ import pool from "../config/database.js";
 
 const router = express.Router();
 
-router.get("/approve/:email", async (req, res) => {
+router.get("/user/:email", async (req, res) => {
     try {
-        await pool.query(
-            "UPDATE users SET status = 'approved' WHERE email = $1",
+        const result = await pool.query(
+            "SELECT email, status FROM users WHERE email = $1",
             [req.params.email]
         );
 
-        res.json({
-            success: true,
-            message: "User approved."
-        });
+        res.json(result.rows);
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            success: false,
-            message: "Approval failed."
-        });
+        res.status(500).json({ error: err.message });
     }
 });
 
