@@ -206,7 +206,33 @@ if (!user) {
             {/* CHAT BOX */}
             <div style={styles.chatBox}>
 
-                {selectedUser ? (
+    <div
+        style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            paddingBottom: "10px"
+        }}
+    >
+        <button
+            onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.href = "/login";
+            }}
+            style={{
+                background: "#ef4444",
+                color: "#fff",
+                border: "none",
+                padding: "10px 18px",
+                borderRadius: "8px",
+                cursor: "pointer"
+            }}
+        >
+            Logout
+        </button>
+    </div>
+
+    {selectedUser ? (
     <>
         <ChatHeader
             user={user}
