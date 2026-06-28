@@ -4,6 +4,12 @@ function ChatHeader({ user, selectedUser, onlineUsers = [] }) {
 
     const isOnline = onlineUsers.includes(selectedUser.id);
 
+    const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+};
+
     return (
 
         <div style={styles.header}>
@@ -26,10 +32,14 @@ function ChatHeader({ user, selectedUser, onlineUsers = [] }) {
 
             </div>
 
-            <div style={styles.right}>
-                {/* Future buttons */}
-                <button style={styles.icon}>⋮</button>
-            </div>
+            <<div style={styles.right}>
+    <button
+        onClick={logout}
+        style={styles.logoutButton}
+    >
+        Logout
+    </button>
+</div>
 
         </div>
 
@@ -48,6 +58,16 @@ const styles = {
         padding: "0 15px",
         borderBottom: "1px solid #334155"
     },
+
+            logoutButton: {
+    background: "#ef4444",
+    color: "white",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: "bold"
+},
 
     left: {
         display: "flex",
