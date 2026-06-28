@@ -1,4 +1,4 @@
-// backend/models/Message.js
+// backend/models/Message.js - Updated
 import pool from "../config/database.js";
 
 /*
@@ -38,7 +38,33 @@ export async function createMessage(data) {
 
 /*
 ==========================================
-Get messages with reply data
+Get a single message by ID
+==========================================
+*/
+
+export async function getMessageById(id) {
+    const query = `
+    SELECT 
+        m.*,
+        sender.full_name as sender_name,
+        sender.username as sender_username,
+        reply_msg.message as reply_to_message,
+        reply_msg.sender_id as reply_to_sender_id,
+        reply_user.full_name as reply_to_sender_name,
+        reply_user.username as reply_to_username
+    FROM messages m
+    LEFT JOIN users sender ON m.sender_id = sender.id
+    LEFT JOIN messages reply_msg ON m.reply_to_message_id = reply_msg.id
+    LEFT JOIN users reply_user ON reply_msg.sender_id = reply_user.id
+    WHERE m.id = $1
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+}
+
+/*
+==========================================
+Get conversation messages with replies
 ==========================================
 */
 
@@ -46,11 +72,14 @@ export async function getConversationMessages(conversationId) {
     const query = `
     SELECT 
         m.*,
+        sender.full_name as sender_name,
+        sender.username as sender_username,
         reply_msg.message as reply_to_message,
         reply_msg.sender_id as reply_to_sender_id,
         reply_user.full_name as reply_to_sender_name,
         reply_user.username as reply_to_username
     FROM messages m
+    LEFT JOIN users sender ON m.sender_id = sender.id
     LEFT JOIN messages reply_msg ON m.reply_to_message_id = reply_msg.id
     LEFT JOIN users reply_user ON reply_msg.sender_id = reply_user.id
     WHERE m.conversation_id = $1
@@ -59,15 +88,4 @@ export async function getConversationMessages(conversationId) {
 
     const result = await pool.query(query, [conversationId]);
     return result.rows;
-}
-
-export async function getMessageById(id) {
-    const query = `
-    SELECT m.*, u.full_name as sender_name, u.username 
-    FROM messages m
-    JOIN users u ON m.sender_id = u.id
-    WHERE m.id = $1
-    `;
-    const result = await pool.query(query, [id]);
-    return result.rows[0];
 }
