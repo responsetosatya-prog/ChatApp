@@ -1,4 +1,4 @@
-// backend/controllers/chatController.js
+// backend/controllers/chatController.js - Updated
 import pool from "../config/database.js";
 import {
     findConversation,
@@ -94,6 +94,7 @@ export async function sendMessage(req, res) {
         const { receiver_id, message, reply_to_message_id } = req.body;
 
         console.log(`Sending message from ${senderId} to ${receiver_id}`);
+        console.log(`Reply to message ID: ${reply_to_message_id || 'none'}`);
 
         if (!receiver_id) {
             return res.status(400).json({
@@ -128,6 +129,7 @@ export async function sendMessage(req, res) {
                     message: "Message you're replying to not found"
                 });
             }
+            console.log("Reply message found:", replyMessage.id);
         }
 
         // Insert message
@@ -150,7 +152,7 @@ export async function sendMessage(req, res) {
 
         res.status(201).json({
             success: true,
-            data: fullMessage
+            data: fullMessage || newMessage
         });
 
     } catch (error) {
