@@ -1,4 +1,4 @@
-// backend/controllers/profileController.js
+// backend/controllers/profileController.js - Simplified version without location/website
 import pool from "../config/database.js";
 import bcrypt from "bcrypt";
 
@@ -22,8 +22,6 @@ export async function getMyProfile(req, res) {
                 email, 
                 profile_picture, 
                 bio, 
-                location, 
-                website, 
                 role, 
                 status, 
                 is_online, 
@@ -52,8 +50,6 @@ export async function getMyProfile(req, res) {
                 email: user.email,
                 profile_picture: user.profile_picture || '',
                 bio: user.bio || '',
-                location: user.location || '',
-                website: user.website || '',
                 role: user.role,
                 status: user.status,
                 is_online: user.is_online,
@@ -82,7 +78,7 @@ PUT /api/profile/update
 export async function updateProfile(req, res) {
     try {
         const userId = req.user.id;
-        const { full_name, username, email, bio, location, website } = req.body;
+        const { full_name, username, email, bio } = req.body;
 
         console.log("Updating profile for user:", userId);
 
@@ -121,14 +117,11 @@ export async function updateProfile(req, res) {
                 username = COALESCE($2, username),
                 email = COALESCE($3, email),
                 bio = COALESCE($4, bio),
-                location = COALESCE($5, location),
-                website = COALESCE($6, website),
                 updated_at = NOW()
-            WHERE id = $7
+            WHERE id = $5
             RETURNING 
-                id, full_name, username, email, bio, location, website, 
-                profile_picture, role, status`,
-            [full_name, username, email, bio, location, website, userId]
+                id, full_name, username, email, bio, profile_picture, role, status`,
+            [full_name, username, email, bio, userId]
         );
 
         res.json({
@@ -288,8 +281,6 @@ export async function getUserProfile(req, res) {
                 email, 
                 profile_picture, 
                 bio, 
-                location, 
-                website, 
                 is_online, 
                 last_seen, 
                 created_at 
@@ -315,8 +306,6 @@ export async function getUserProfile(req, res) {
                 username: user.username,
                 profile_picture: user.profile_picture || '',
                 bio: user.bio || '',
-                location: user.location || '',
-                website: user.website || '',
                 is_online: user.is_online,
                 last_seen: user.last_seen,
                 created_at: user.created_at
