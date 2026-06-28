@@ -1,3 +1,4 @@
+// frontend/src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Login from "./pages/Login";
@@ -69,7 +70,7 @@ function App() {
         />
 
         <Route
-          path="/admin/*"
+          path="/admin"
           element={
             <ProtectedRoute requireAdmin={true}>
               <AdminDashboard />
