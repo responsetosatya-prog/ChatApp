@@ -1,3 +1,4 @@
+// backend/server.js - Updated version
 import express from "express";
 import http from "http";
 import dotenv from "dotenv";
@@ -6,56 +7,56 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config();
-
+import pool from "./config/database.js";
 import { initializeDatabase } from "./config/initDatabase.js";
+
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import chatRoutes from "./routes/chat.js";
 import conversationRoutes from "./routes/conversation.js";
 import uploadRoutes from "./routes/upload.js";
 import profileRoutes from "./routes/profile.js";
+
 import { initializeSocket } from "./socket/socket.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 
-/*
-==========================================
-MIDDLEWARE
-==========================================
-*/
+// ==========================================
+// MIDDLEWARE
+// ==========================================
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true
+    origin: process.env.FRONTEND_URL || "https://chatsphere-1-0in4.onrender.com",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(cookieParser());
 
-/*
-==========================================
-STATIC FILES (UPLOADS)
-==========================================
-*/
+// ==========================================
+// STATIC FILES (UPLOADS)
+// ==========================================
 
-const uploadsPath = path.join(__dirname, "uploads");
+const uploadsPath = path.resolve(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsPath));
 
-/*
-==========================================
-API ROUTES
-==========================================
-*/
+// ==========================================
+// API ROUTES
+// ==========================================
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
@@ -64,39 +65,42 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/profile", profileRoutes);
 
-/*
-==========================================
-HEALTH CHECK
-==========================================
-*/
+// ==========================================
+// HEALTH CHECK
+// ==========================================
 
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "🚀 ChatSphere Backend is Running"
-    });
-});
-
-app.get("/health", (req, res) => {
-    res.json({
-        status: "healthy",
+        message: "🚀 ChatSphere Backend is Running",
         timestamp: new Date().toISOString()
     });
 });
 
-/*
-==========================================
-START SERVER
-==========================================
-*/
+// ==========================================
+// ERROR HANDLING
+// ==========================================
+
+app.use((err, req, res, next) => {
+    console.error("❌ Error:", err);
+    res.status(500).json({
+        success: false,
+        message: err.message || "Internal Server Error"
+    });
+});
+
+// ==========================================
+// START SERVER
+// ==========================================
 
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
     try {
         await initializeDatabase();
+        
         const io = initializeSocket(server);
-
+        
         server.listen(PORT, () => {
             console.log(`
 =========================================
@@ -106,6 +110,7 @@ Port: ${PORT}
 Environment: ${process.env.NODE_ENV || "development"}
 Socket.IO: ACTIVE
 Database: CONNECTED
+Frontend: ${process.env.FRONTEND_URL || "Not Set"}
 =========================================
 `);
         });
