@@ -1,8 +1,10 @@
-// frontend/src/pages/Chat.jsx
+// frontend/src/pages/Chat.jsx (Updated with Reply Feature)
 import { useEffect, useState, useRef, useCallback } from "react";
 import { 
   FaSearch, FaUserPlus, FaPaperPlane, 
-  FaImage, FaSmile, FaTimes, FaUser 
+  FaImage, FaSmile, FaTimes, FaUser,
+  FaReply, FaEllipsisV, FaTrash, FaEdit,
+  FaCheckCircle
 } from "react-icons/fa";
 import API from "../services/api";
 import socket from "../socket/socket";
@@ -21,10 +23,13 @@ function Chat() {
   const [typing, setTyping] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [replyTo, setReplyTo] = useState(null); // ✅ NEW: Reply state
+  const [showReactions, setShowReactions] = useState(false);
   
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const socketConnected = useRef(false);
+  const inputRef = useRef(null);
   
   const userString = localStorage.getItem("user");
   const user = userString ? JSON.parse(userString) : null;
@@ -64,17 +69,11 @@ function Chat() {
       const res = await API.get(`/chat/${otherUser.id}`);
       console.log("Messages response:", res.data);
       
-      const unique = Array.from(
-        new Map(res.data.messages.map(m => [m.id, m])).values()
-      );
-      
-      setMessages(unique);
+      setMessages(res.data.messages || []);
       setSelectedUser(otherUser);
       
-      // Join conversation room
       const roomId = otherUser.id;
       socket.emit("join-conversation", roomId);
-      console.log(`Joined conversation room: conversation-${roomId}`);
       
     } catch (err) {
       console.error("Error loading messages:", err);
@@ -115,12 +114,11 @@ function Chat() {
       }
     } catch (err) {
       console.error("Error starting conversation:", err);
-      // Try to load messages anyway
       await loadMessages(otherUser);
     }
   }, [loadConversations, loadMessages]);
 
-  // Send message
+  // ✅ NEW: Send message with reply support
   const sendMessage = useCallback(async () => {
     if (!text.trim() || !selectedUser) {
       console.log("Cannot send: no text or no selected user");
@@ -130,10 +128,18 @@ function Chat() {
     console.log("Sending message to:", selectedUser.id, "text:", text);
 
     try {
-      const res = await API.post("/chat/send", {
+      const payload = {
         receiver_id: selectedUser.id,
         message: text
-      });
+      };
+
+      // ✅ Add reply_to_message_id if replying
+      if (replyTo) {
+        payload.reply_to_message_id = replyTo.id;
+        console.log("Replying to message:", replyTo.id);
+      }
+
+      const res = await API.post("/chat/send", payload);
 
       console.log("Message sent response:", res.data);
 
@@ -145,7 +151,6 @@ function Chat() {
         return [...prev, newMessage];
       });
 
-      // Emit to socket with conversation_id
       const socketMessage = {
         ...newMessage,
         conversation_id: selectedUser.id
@@ -153,25 +158,36 @@ function Chat() {
       
       if (socketConnected.current) {
         socket.emit("send-message", socketMessage);
-        console.log("Message emitted to socket:", socketMessage);
-      } else {
-        console.warn("Socket not connected, message saved locally only");
       }
       
       setText("");
       setTyping(false);
+      setReplyTo(null); // ✅ Clear reply state after sending
       
-      // Update conversation list
       await loadConversations();
-      
-      // Scroll to bottom
       setTimeout(scrollToBottom, 100);
       
     } catch (err) {
       console.error("Error sending message:", err);
       alert("Failed to send message. Please try again.");
     }
-  }, [text, selectedUser, loadConversations]);
+  }, [text, selectedUser, replyTo, loadConversations]);
+
+  // ✅ NEW: Handle reply action
+  const handleReply = (message) => {
+    setReplyTo({
+      id: message.id,
+      message: message.message,
+      sender: message.sender_name || message.sender_username || 'User',
+      sender_id: message.sender_id
+    });
+    inputRef.current?.focus();
+  };
+
+  // ✅ NEW: Cancel reply
+  const cancelReply = () => {
+    setReplyTo(null);
+  };
 
   // Handle typing
   const handleTyping = useCallback((e) => {
@@ -203,7 +219,7 @@ function Chat() {
     }
   };
 
-  // Socket events setup
+  // Socket events
   useEffect(() => {
     socket.connect();
     socketConnected.current = true;
@@ -229,7 +245,6 @@ function Chat() {
     };
 
     const onOnlineUsers = (users) => {
-      console.log("👥 Online users updated:", users);
       setOnlineUsers(users);
     };
 
@@ -245,29 +260,11 @@ function Chat() {
       }
     };
 
-    const onDisconnect = () => {
-      console.log("🔌 Socket disconnected");
-      setIsConnected(false);
-      socketConnected.current = false;
-    };
-
-    const onReconnect = () => {
-      console.log("🔄 Socket reconnected");
-      setIsConnected(true);
-      socketConnected.current = true;
-      socket.emit("user-online", user.id);
-    };
-
     socket.on("connect", onConnect);
     socket.on("receive-message", onReceiveMessage);
     socket.on("online-users", onOnlineUsers);
     socket.on("user-typing", onUserTyping);
     socket.on("user-stop-typing", onUserStopTyping);
-    socket.on("disconnect", onDisconnect);
-    socket.on("reconnect", onReconnect);
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
 
     return () => {
       socket.off("connect", onConnect);
@@ -275,9 +272,6 @@ function Chat() {
       socket.off("online-users", onOnlineUsers);
       socket.off("user-typing", onUserTyping);
       socket.off("user-stop-typing", onUserStopTyping);
-      socket.off("disconnect", onDisconnect);
-      socket.off("reconnect", onReconnect);
-      socket.off("connect_error");
       socket.disconnect();
       socketConnected.current = false;
     };
@@ -303,13 +297,8 @@ function Chat() {
     window.location.href = "/login";
   };
 
-  console.log("Current state:", {
-    selectedUser: selectedUser?.username,
-    messages: messages.length,
-    conversations: conversations.length,
-    isConnected,
-    socketConnected: socketConnected.current
-  });
+  // ✅ NEW: Check if current user is admin
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="chat-container">
@@ -328,10 +317,8 @@ function Chat() {
             </div>
           </div>
           
-          {/* ✅ ADMIN BUTTON - ADD THIS RIGHT HERE */}
           <div className="sidebar-actions">
-            {/* Admin Button - Only shows for admin users */}
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <button 
                 className="btn btn-primary btn-sm"
                 onClick={() => window.location.href = '/admin'}
@@ -453,8 +440,27 @@ function Chat() {
               onBack={() => {
                 setSelectedUser(null);
                 setMessages([]);
+                setReplyTo(null);
               }}
             />
+
+            {/* ✅ NEW: Reply Preview Bar */}
+            {replyTo && (
+              <div className="reply-preview">
+                <div className="reply-preview-content">
+                  <FaReply className="reply-preview-icon" />
+                  <div className="reply-preview-info">
+                    <span className="reply-preview-sender">
+                      Replying to {replyTo.sender}
+                    </span>
+                    <span className="reply-preview-text">{replyTo.message}</span>
+                  </div>
+                </div>
+                <button className="reply-preview-close" onClick={cancelReply}>
+                  <FaTimes />
+                </button>
+              </div>
+            )}
 
             <div className="messages-container">
               {loading ? (
@@ -479,12 +485,53 @@ function Chat() {
                           </div>
                         )}
                         <div className="message-content">
+                          {/* ✅ NEW: Reply Preview in Message */}
+                          {m.reply_to_message_id && (
+                            <div className="message-reply-preview">
+                              <FaReply className="reply-icon" />
+                              <span className="reply-sender">
+                                {m.reply_to_sender_name || m.reply_to_username || 'User'}
+                              </span>
+                              <span className="reply-text">{m.reply_to_message}</span>
+                            </div>
+                          )}
+                          
                           <div className="message-text">{m.message}</div>
-                          <div className="message-time">
-                            {new Date(m.created_at).toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
+                          
+                          <div className="message-footer">
+                            <div className="message-time">
+                              {new Date(m.created_at).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </div>
+                            
+                            {/* ✅ NEW: Message Actions */}
+                            <div className="message-actions">
+                              <button 
+                                className="message-action-btn"
+                                onClick={() => handleReply(m)}
+                                title="Reply"
+                              >
+                                <FaReply />
+                              </button>
+                              {m.sender_id === user.id && (
+                                <>
+                                  <button 
+                                    className="message-action-btn"
+                                    title="Edit"
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button 
+                                    className="message-action-btn"
+                                    title="Delete"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -511,10 +558,11 @@ function Chat() {
                 <FaSmile />
               </button>
               <input
+                ref={inputRef}
                 value={text}
                 onChange={handleTyping}
                 onKeyPress={handleKeyPress}
-                placeholder={`Message ${selectedUser.full_name}...`}
+                placeholder={replyTo ? `Reply to ${replyTo.sender}...` : `Message ${selectedUser.full_name}...`}
                 className="chat-input"
                 autoFocus
               />
