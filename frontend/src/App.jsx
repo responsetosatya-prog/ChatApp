@@ -7,30 +7,29 @@ import Chat from "./pages/Chat";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+    const token = localStorage.getItem("token");
 
     return (
-
         <BrowserRouter>
-
             <Routes>
 
-                {/* DEFAULT ROUTE */}
+                {/* Home */}
                 <Route
-    path="/"
-    element={
-        localStorage.getItem("token")
-            ? <Navigate to="/chat" />
-            : <Navigate to="/login" />
-    }
-/>
+                    path="/"
+                    element={
+                        token
+                            ? <Navigate to="/chat" replace />
+                            : <Navigate to="/login" replace />
+                    }
+                />
 
-                {/* LOGIN */}
+                {/* Login */}
                 <Route path="/login" element={<Login />} />
 
-                {/* REGISTER */}
+                {/* Register */}
                 <Route path="/register" element={<Register />} />
 
-                {/* CHAT (PROTECTED) */}
+                {/* Protected Chat */}
                 <Route
                     path="/chat"
                     element={
@@ -40,18 +39,15 @@ function App() {
                     }
                 />
 
-                {/* FALLBACK */}
+                {/* 404 */}
                 <Route
                     path="*"
-                    element={<Navigate to="/login" />}
+                    element={<Navigate to="/" replace />}
                 />
 
             </Routes>
-
         </BrowserRouter>
-
     );
-
 }
 
 export default App;
