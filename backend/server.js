@@ -1,3 +1,4 @@
+// backend/server.js
 import express from "express";
 import http from "http";
 import dotenv from "dotenv";
@@ -18,6 +19,9 @@ import conversationRoutes from "./routes/conversation.js";
 import uploadRoutes from "./routes/upload.js";
 import profileRoutes from "./routes/profile.js";
 import userRoutes from "./routes/users.js";
+
+// ✅ ADD THIS IMPORT
+import tempAdminRoutes from "./routes/temp-admin.js";
 
 import { initializeSocket } from "./socket/socket.js";
 
@@ -55,7 +59,9 @@ app.use("/api", limiter);
 // Static files
 app.use("/uploads", express.static(path.resolve(__dirname, "uploads")));
 
-// Routes
+// ==========================================
+// ROUTES
+// ==========================================
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/chat", chatRoutes);
@@ -63,6 +69,9 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/users", userRoutes);
+
+// ✅ ADD THIS TEMPORARY ADMIN ROUTE (after other routes)
+app.use("/api/temp-admin", tempAdminRoutes);
 
 // Health check
 app.get("/", (req, res) => {
