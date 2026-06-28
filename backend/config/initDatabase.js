@@ -1,4 +1,4 @@
-// backend/config/initDatabase.js
+// backend/config/initDatabase.js - Updated
 import pool from "../config/database.js";
 
 export async function initializeDatabase() {
@@ -72,16 +72,26 @@ export async function initializeDatabase() {
                 CONSTRAINT fk_receiver
                     FOREIGN KEY(receiver_id)
                     REFERENCES users(id)
-                    ON DELETE CASCADE,
-                CONSTRAINT fk_reply_to
-                    FOREIGN KEY(reply_to_message_id)
-                    REFERENCES messages(id)
-                    ON DELETE SET NULL
+                    ON DELETE CASCADE
             )
         `);
-        console.log("✅ Messages table ready with reply support");
+        console.log("✅ Messages table ready");
 
-        // 4. Add foreign key for conversation_id if it doesn't exist
+        // 4. Add reply_to_message_id foreign key if it doesn't exist
+        try {
+            await pool.query(`
+                ALTER TABLE messages 
+                ADD CONSTRAINT fk_reply_to
+                FOREIGN KEY (reply_to_message_id)
+                REFERENCES messages(id)
+                ON DELETE SET NULL
+            `);
+            console.log("✅ Reply foreign key added");
+        } catch (err) {
+            console.log("ℹ️ Reply foreign key already exists");
+        }
+
+        // 5. Add conversation_id foreign key if it doesn't exist
         try {
             await pool.query(`
                 ALTER TABLE messages 
@@ -90,9 +100,9 @@ export async function initializeDatabase() {
                 REFERENCES conversations(id) 
                 ON DELETE CASCADE
             `);
-            console.log("✅ Foreign key constraint added");
+            console.log("✅ Conversation foreign key added");
         } catch (err) {
-            console.log("ℹ️ Foreign key constraint already exists or could not be added");
+            console.log("ℹ️ Conversation foreign key already exists");
         }
 
         console.log("");
