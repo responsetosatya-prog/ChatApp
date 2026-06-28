@@ -1,4 +1,4 @@
-// frontend/src/pages/Profile.jsx
+// frontend/src/pages/Profile.jsx - Simplified Working Version
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -48,7 +48,6 @@ function Profile() {
     const [showPassword, setShowPassword] = useState(false);
     const [passwordLoading, setPasswordLoading] = useState(false);
 
-    // Load profile
     useEffect(() => {
         loadProfile();
     }, []);
@@ -77,7 +76,6 @@ function Profile() {
         }
     };
 
-    // Handle profile update
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -90,7 +88,6 @@ function Profile() {
                 setIsEditing(false);
                 setMessage({ text: "Profile updated successfully!", type: "success" });
                 
-                // Update stored user data
                 const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
                 localStorage.setItem("user", JSON.stringify({
                     ...storedUser,
@@ -110,18 +107,15 @@ function Profile() {
         }
     };
 
-    // Handle profile picture upload
     const handleUploadPicture = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             setMessage({ text: "Please select an image file", type: "error" });
             return;
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             setMessage({ text: "Image must be less than 5MB", type: "error" });
             return;
@@ -133,7 +127,6 @@ function Profile() {
         try {
             setSaving(true);
             
-            // Upload file
             const uploadRes = await API.post("/upload", formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -141,7 +134,6 @@ function Profile() {
             if (uploadRes.data.success) {
                 const imageUrl = uploadRes.data.file.url;
                 
-                // Update profile picture
                 const updateRes = await API.put("/profile/picture", {
                     profile_picture: imageUrl
                 });
@@ -150,7 +142,6 @@ function Profile() {
                     setProfile(updateRes.data.user);
                     setMessage({ text: "Profile picture updated!", type: "success" });
                     
-                    // Update stored user data
                     const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
                     localStorage.setItem("user", JSON.stringify({
                         ...storedUser,
@@ -168,7 +159,6 @@ function Profile() {
         }
     };
 
-    // Handle password change
     const handleChangePassword = async (e) => {
         e.preventDefault();
         
@@ -212,7 +202,6 @@ function Profile() {
         }
     };
 
-    // Format date
     const formatDate = (date) => {
         if (!date) return 'N/A';
         return new Date(date).toLocaleDateString('en-US', {
@@ -232,7 +221,6 @@ function Profile() {
 
     return (
         <div className="profile-container">
-            {/* Header */}
             <div className="profile-header">
                 <button className="profile-back" onClick={() => navigate('/chat')}>
                     <FaArrowLeft /> Back to Chat
@@ -262,7 +250,6 @@ function Profile() {
                 </div>
             </div>
 
-            {/* Messages */}
             {message.text && (
                 <div className={`profile-message ${message.type}`}>
                     {message.type === 'success' ? <FaCheckCircle /> : <FaExclamationCircle />}
@@ -270,9 +257,7 @@ function Profile() {
                 </div>
             )}
 
-            {/* Profile Content */}
             <div className="profile-content">
-                {/* Profile Picture Section */}
                 <div className="profile-picture-section">
                     <div className="profile-picture-wrapper">
                         <img 
@@ -304,10 +289,8 @@ function Profile() {
                     </div>
                 </div>
 
-                {/* Profile Info Card */}
                 <div className="profile-info-card">
                     {isEditing ? (
-                        // Edit Mode
                         <form onSubmit={handleUpdateProfile} className="profile-form">
                             <div className="form-group">
                                 <label>Full Name</label>
@@ -376,7 +359,6 @@ function Profile() {
                             </div>
                         </form>
                     ) : (
-                        // View Mode
                         <div className="profile-details">
                             <div className="profile-detail-item">
                                 <span className="detail-label">Full Name</span>
@@ -437,7 +419,6 @@ function Profile() {
                     )}
                 </div>
 
-                {/* Change Password Section */}
                 <div className="profile-password-card">
                     <h3>Change Password</h3>
                     <form onSubmit={handleChangePassword} className="password-form">
