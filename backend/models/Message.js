@@ -3,50 +3,7 @@ import pool from "../config/database.js";
 
 /*
 ==========================================
-Create Messages Table
-==========================================
-*/
-
-export async function createMessagesTable() {
-    const query = `
-    CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        conversation_id INTEGER NOT NULL,
-        sender_id INTEGER NOT NULL,
-        receiver_id INTEGER NOT NULL,
-        message TEXT,
-        message_type VARCHAR(20) DEFAULT 'text',
-        media_url TEXT DEFAULT '',
-        is_seen BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_conversation
-            FOREIGN KEY(conversation_id)
-            REFERENCES conversations(id)
-            ON DELETE CASCADE,
-        CONSTRAINT fk_sender
-            FOREIGN KEY(sender_id)
-            REFERENCES users(id)
-            ON DELETE CASCADE,
-        CONSTRAINT fk_receiver
-            FOREIGN KEY(receiver_id)
-            REFERENCES users(id)
-            ON DELETE CASCADE
-    );
-    `;
-
-    try {
-        await pool.query(query);
-        console.log("✅ Messages table created.");
-    } catch (error) {
-        console.error("❌ Error creating messages table");
-        console.error(error);
-    }
-}
-
-/*
-==========================================
-Send Message
+Create a new message with reply support
 ==========================================
 */
 
@@ -58,9 +15,10 @@ export async function createMessage(data) {
         receiver_id,
         message,
         message_type,
-        media_url
+        media_url,
+        reply_to_message_id
     )
-    VALUES($1,$2,$3,$4,$5,$6)
+    VALUES($1, $2, $3, $4, $5, $6, $7)
     RETURNING *;
     `;
 
@@ -70,7 +28,8 @@ export async function createMessage(data) {
         data.receiver_id,
         data.message,
         data.message_type || "text",
-        data.media_url || ""
+        data.media_url || "",
+        data.reply_to_message_id || null
     ];
 
     const result = await pool.query(query, values);
@@ -79,70 +38,36 @@ export async function createMessage(data) {
 
 /*
 ==========================================
-Get Conversation Messages
+Get messages with reply data
 ==========================================
 */
 
 export async function getConversationMessages(conversationId) {
     const query = `
-    SELECT *
-    FROM messages
-    WHERE conversation_id = $1
-    ORDER BY created_at ASC;
+    SELECT 
+        m.*,
+        reply_msg.message as reply_to_message,
+        reply_msg.sender_id as reply_to_sender_id,
+        reply_user.full_name as reply_to_sender_name,
+        reply_user.username as reply_to_username
+    FROM messages m
+    LEFT JOIN messages reply_msg ON m.reply_to_message_id = reply_msg.id
+    LEFT JOIN users reply_user ON reply_msg.sender_id = reply_user.id
+    WHERE m.conversation_id = $1
+    ORDER BY m.created_at ASC;
     `;
 
     const result = await pool.query(query, [conversationId]);
     return result.rows;
 }
 
-/*
-==========================================
-Mark Messages As Seen
-==========================================
-*/
-
-export async function markSeen(senderId, receiverId) {
-    await pool.query(
-        `
-        UPDATE messages
-        SET is_seen = TRUE
-        WHERE sender_id = $1
-        AND receiver_id = $2
-        AND is_seen = FALSE
-        `,
-        [senderId, receiverId]
-    );
-}
-
-/*
-==========================================
-Delete Message
-==========================================
-*/
-
-export async function deleteMessage(id) {
-    await pool.query(
-        "DELETE FROM messages WHERE id = $1",
-        [id]
-    );
-}
-
-/*
-==========================================
-Edit Message
-==========================================
-*/
-
-export async function editMessage(id, message) {
-    const result = await pool.query(
-        `
-        UPDATE messages
-        SET message = $1,
-            updated_at = NOW()
-        WHERE id = $2
-        RETURNING *;
-        `,
-        [message, id]
-    );
+export async function getMessageById(id) {
+    const query = `
+    SELECT m.*, u.full_name as sender_name, u.username 
+    FROM messages m
+    JOIN users u ON m.sender_id = u.id
+    WHERE m.id = $1
+    `;
+    const result = await pool.query(query, [id]);
     return result.rows[0];
 }
