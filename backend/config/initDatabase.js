@@ -1,4 +1,4 @@
-// backend/config/initDatabase.js - Updated
+// backend/config/initDatabase.js - COMPLETE FIXED VERSION
 import pool from "../config/database.js";
 
 export async function initializeDatabase() {
@@ -51,7 +51,7 @@ export async function initializeDatabase() {
         `);
         console.log("✅ Conversations table ready");
 
-        // 3. Create messages table with reply_to_message_id
+        // 3. Create messages table (without reply_to_message_id first)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
@@ -62,7 +62,6 @@ export async function initializeDatabase() {
                 message_type VARCHAR(20) DEFAULT 'text',
                 media_url TEXT DEFAULT '',
                 is_seen BOOLEAN DEFAULT FALSE,
-                reply_to_message_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_sender
@@ -77,7 +76,30 @@ export async function initializeDatabase() {
         `);
         console.log("✅ Messages table ready");
 
-        // 4. Add reply_to_message_id foreign key if it doesn't exist
+        // 4. ✅ ADD reply_to_message_id column if it doesn't exist
+        try {
+            // Check if column exists
+            const checkColumn = await pool.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='messages' AND column_name='reply_to_message_id'
+            `);
+            
+            if (checkColumn.rows.length === 0) {
+                console.log("📝 Adding reply_to_message_id column...");
+                await pool.query(`
+                    ALTER TABLE messages 
+                    ADD COLUMN reply_to_message_id INTEGER
+                `);
+                console.log("✅ reply_to_message_id column added");
+            } else {
+                console.log("✅ reply_to_message_id column already exists");
+            }
+        } catch (err) {
+            console.log("ℹ️ Could not add reply_to_message_id column:", err.message);
+        }
+
+        // 5. ✅ Add foreign key for reply_to_message_id
         try {
             await pool.query(`
                 ALTER TABLE messages 
@@ -88,10 +110,10 @@ export async function initializeDatabase() {
             `);
             console.log("✅ Reply foreign key added");
         } catch (err) {
-            console.log("ℹ️ Reply foreign key already exists");
+            console.log("ℹ️ Reply foreign key already exists or could not be added");
         }
 
-        // 5. Add conversation_id foreign key if it doesn't exist
+        // 6. Add conversation_id foreign key if it doesn't exist
         try {
             await pool.query(`
                 ALTER TABLE messages 
@@ -112,5 +134,6 @@ export async function initializeDatabase() {
 
     } catch (error) {
         console.error("❌ Database initialization error:", error);
+        // Don't exit, let the app continue
     }
 }
