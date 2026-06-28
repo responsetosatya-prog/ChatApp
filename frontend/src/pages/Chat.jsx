@@ -217,4 +217,230 @@ function Chat() {
   useEffect(() => {
     const timer = setTimeout(() => {
       searchUsers(searchQuery);
-    },
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    socket.disconnect();
+    window.location.href = "/login";
+  };
+
+  return (
+    <div className="chat-container">
+      {/* Sidebar */}
+      <div className="chat-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-user">
+            <div className={`avatar avatar-online ${onlineUsers.includes(user.id) ? 'online' : ''}`}>
+              {user.full_name?.charAt(0) || <FaUser />}
+            </div>
+            <div className="sidebar-user-info">
+              <h3>{user.full_name}</h3>
+              <span className="user-status">
+                {onlineUsers.includes(user.id) ? '🟢 Online' : '⚫ Offline'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="sidebar-actions">
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <FaUserPlus />
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={logout}>
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        {showSearch && (
+          <div className="search-container animate-slide-in">
+            <div className="search-input-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search for users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+                autoFocus
+              />
+              <button 
+                className="search-close" 
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                {searchResults.map((result) => (
+                  <div 
+                    key={result.id}
+                    className="search-result-item"
+                    onClick={() => startConversation(result)}
+                  >
+                    <div className="avatar avatar-sm">
+                      {result.username?.charAt(0) || <FaUser />}
+                    </div>
+                    <div>
+                      <div className="search-result-name">{result.full_name}</div>
+                      <div className="search-result-username">@{result.username}</div>
+                    </div>
+                    <button className="btn btn-primary btn-sm">
+                      <FaUserPlus />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Conversations */}
+        <div className="conversations-list">
+          {conversations.length === 0 ? (
+            <div className="empty-conversations">
+              <p>No conversations yet</p>
+              <p className="empty-sub">Search for users to start chatting</p>
+            </div>
+          ) : (
+            conversations.map((c) => {
+              const otherUser = c.user_one.id === user.id 
+                ? c.user_two 
+                : c.user_one;
+              
+              const isOnline = onlineUsers.includes(otherUser.id);
+              const isActive = selectedUser?.id === otherUser.id;
+              
+              return (
+                <div
+                  key={c.id}
+                  className={`conversation-item ${isActive ? 'active' : ''}`}
+                  onClick={() => loadMessages(otherUser)}
+                >
+                  <div className={`avatar avatar-sm ${isOnline ? 'online' : ''}`}>
+                    {otherUser.username?.charAt(0) || <FaUser />}
+                  </div>
+                  <div className="conversation-info">
+                    <div className="conversation-name">{otherUser.full_name}</div>
+                    <div className="conversation-last-message">
+                      {c.last_message || "No messages yet"}
+                    </div>
+                  </div>
+                  {isOnline && <div className="online-dot"></div>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className="chat-area">
+        {selectedUser ? (
+          <>
+            <ChatHeader
+              user={user}
+              selectedUser={selectedUser}
+              onlineUsers={onlineUsers}
+              onBack={() => setSelectedUser(null)}
+            />
+
+            <div className="messages-container">
+              {loading ? (
+                <div className="loading-messages">
+                  <div className="loading-spinner"></div>
+                </div>
+              ) : (
+                <>
+                  {messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`message ${m.sender_id === user.id ? 'sent' : 'received'}`}
+                    >
+                      {m.sender_id !== user.id && (
+                        <div className="message-avatar avatar avatar-sm">
+                          {selectedUser.username?.charAt(0) || <FaUser />}
+                        </div>
+                      )}
+                      <div className="message-content">
+                        <div className="message-text">{m.message}</div>
+                        <div className="message-time">
+                          {new Date(m.created_at).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {isTyping && (
+                    <div className="typing-indicator">
+                      <span>{selectedUser.username} is typing</span>
+                      <span className="typing-dots">...</span>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            <div className="chat-input-container">
+              <button className="input-action">
+                <FaImage />
+              </button>
+              <button className="input-action">
+                <FaSmile />
+              </button>
+              <input
+                value={text}
+                onChange={handleTyping}
+                onKeyPress={handleKeyPress}
+                placeholder="Type a message..."
+                className="chat-input"
+              />
+              <button 
+                className="btn btn-primary" 
+                onClick={sendMessage}
+                disabled={!text.trim()}
+              >
+                <FaPaperPlane />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="empty-chat">
+            <div className="empty-chat-content">
+              <div className="empty-chat-icon">💬</div>
+              <h2>Welcome to ChatSphere</h2>
+              <p>Select a conversation or search for users to start chatting</p>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setShowSearch(true)}
+              >
+                <FaUserPlus /> Find Friends
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Chat;
