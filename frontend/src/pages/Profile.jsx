@@ -1,9 +1,9 @@
-// frontend/src/pages/Profile.jsx - Simplified Working Version
+// frontend/src/pages/Profile.jsx - Simplified version without location/website
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-    FaUser, FaEnvelope, FaLock, FaGlobe, 
-    FaMapMarkerAlt, FaCamera, FaEdit, 
+    FaUser, FaEnvelope, FaLock, 
+    FaCamera, FaEdit, 
     FaSave, FaTimes, FaArrowLeft,
     FaCheckCircle, FaExclamationCircle
 } from "react-icons/fa";
@@ -24,8 +24,6 @@ function Profile() {
         username: '',
         email: '',
         bio: '',
-        location: '',
-        website: '',
         profile_picture: '',
         created_at: '',
         role: ''
@@ -35,9 +33,7 @@ function Profile() {
         full_name: '',
         username: '',
         email: '',
-        bio: '',
-        location: '',
-        website: ''
+        bio: ''
     });
 
     const [passwordData, setPasswordData] = useState({
@@ -63,9 +59,7 @@ function Profile() {
                     full_name: user.full_name || '',
                     username: user.username || '',
                     email: user.email || '',
-                    bio: user.bio || '',
-                    location: user.location || '',
-                    website: user.website || ''
+                    bio: user.bio || ''
                 });
             }
         } catch (err) {
@@ -238,9 +232,7 @@ function Profile() {
                                 full_name: profile.full_name || '',
                                 username: profile.username || '',
                                 email: profile.email || '',
-                                bio: profile.bio || '',
-                                location: profile.location || '',
-                                website: profile.website || ''
+                                bio: profile.bio || ''
                             });
                             setMessage({ text: '', type: '' });
                         }}>
@@ -332,26 +324,6 @@ function Profile() {
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label>Location</label>
-                                <input
-                                    type="text"
-                                    value={formData.location}
-                                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                                    placeholder="City, Country"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Website</label>
-                                <input
-                                    type="url"
-                                    value={formData.website}
-                                    onChange={(e) => setFormData({...formData, website: e.target.value})}
-                                    placeholder="https://yourwebsite.com"
-                                />
-                            </div>
-
                             <div className="profile-form-actions">
                                 <button type="submit" className="btn btn-primary" disabled={saving}>
                                     {saving ? 'Saving...' : <><FaSave /> Save Changes</>}
@@ -379,26 +351,6 @@ function Profile() {
                                 <div className="profile-detail-item">
                                     <span className="detail-label">Bio</span>
                                     <span className="detail-value bio-text">{profile.bio}</span>
-                                </div>
-                            )}
-
-                            {profile.location && (
-                                <div className="profile-detail-item">
-                                    <span className="detail-label">Location</span>
-                                    <span className="detail-value">
-                                        <FaMapMarkerAlt /> {profile.location}
-                                    </span>
-                                </div>
-                            )}
-
-                            {profile.website && (
-                                <div className="profile-detail-item">
-                                    <span className="detail-label">Website</span>
-                                    <span className="detail-value">
-                                        <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                                            {profile.website}
-                                        </a>
-                                    </span>
                                 </div>
                             )}
 
